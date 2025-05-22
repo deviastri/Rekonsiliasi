@@ -245,9 +245,6 @@ elif menu == "Naik/Turun Golongan":
 
             rekap['Selisih Naik/Turun Golongan'] = rekap['SELISIH'].apply(format_rp)
 
-            total = rekap['SELISIH'].
-
-
 
 elif menu == "Rekonsiliasi":
     st.title("💸 Rekonsiliasi Invoice vs Rekening")
