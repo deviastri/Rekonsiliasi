@@ -10,7 +10,8 @@ MENU_ITEMS = [
     "Tiket Terjual",
     "Penambahan & Pengurangan",
     "Naik/Turun Golongan",
-    "Rekonsiliasi"
+    "Rekonsiliasi",
+    "Riwayat Upload" 
 ]
 menu = st.sidebar.radio("Pilih Halaman", MENU_ITEMS)
 
@@ -307,3 +308,23 @@ elif menu == "Rekonsiliasi":
             st.error(f"Gagal memproses file: {e}")
     else:
         st.info("Silakan upload file invoice dan rekening.")
+
+elif menu == "Riwayat Upload":
+    st.title("📁 Riwayat Data Upload")
+
+    data_files = {
+        "Tiket Terjual": "tiket_terjual.xlsx",
+        "Penambahan": "penambahan.xlsx",
+        "Pengurangan": "pengurangan.xlsx",
+        "Naik/Turun Golongan": "golongan.xlsx",
+        "Rekonsiliasi": "rekonsiliasi.xlsx"
+    }
+
+    for label, filename in data_files.items():
+        path = f"{data_dir}/{filename}"
+        if os.path.exists(path):
+            df = pd.read_excel(path)
+            st.subheader(label)
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.warning(f"Data untuk '{label}' belum ada.")
