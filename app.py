@@ -213,19 +213,24 @@ elif menu == "Naik/Turun Golongan":
 
             df_inv['PELABUHAN'] = df_inv['KEBERANGKATAN'].astype(str).str.upper().str.strip()
 
-            # Gabung invoice dan tiket berdasarkan nomor invoice saja
-            merged = pd.merge(
-                df_inv[['INVOICE', 'PELABUHAN', 'HARGA']],
-                df_tik[['INVOICE', 'TARIF']],
-                on='INVOICE',
-                how='outer'
-            ).fillna(0)
-
+            # Hitung total harga per invoice dan pelabuhan dari invoice
+            inv_grouped = df_inv.groupby(['INVOICE', 'KEBERANGKATAN'], as_index=False)['HARGA'].sum()
+            inv_grouped.rename(columns={'KEBERANGKATAN': 'PELABUHAN'}, inplace=True)
+            
+            # Hitung total tarif per invoice dari tiket summary
+            tik_grouped = df_tik.groupby('INVOICE', as_index=False)['TARIF'].sum()
+            
+            # Gabungkan berdasarkan invoice dan pelabuhan (pelabuhan dari invoice)
+            merged = pd.merge(inv_grouped, tik_grouped, on='INVOICE', how='left').fillna(0)
+            
+            # Filter pelabuhan utama berdasarkan pelabuhan dari invoice
             utama = ['MERAK', 'BAKAUHENI', 'KETAPANG', 'GILIMANUK']
             merged = merged[merged['PELABUHAN'].isin(utama)]
-
+            
+            # Hitung selisih per invoice (harga + tarif)
             merged['SELISIH'] = merged['HARGA'] + merged['TARIF']
-
+            
+            # Agregasi selisih per pelabuhan
             rekap = merged.groupby('PELABUHAN')['SELISIH'].sum().reindex(utama, fill_value=0).reset_index()
 
             rekap['Keterangan'] = rekap['SELISIH'].apply(
