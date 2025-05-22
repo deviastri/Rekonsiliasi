@@ -208,8 +208,8 @@ elif menu == "Naik/Turun Golongan":
             df_inv['INVOICE'] = df_inv[invoice_col].astype(str).str.strip()
             df_tik['INVOICE'] = df_tik['NOMOR INVOICE'].astype(str).str.strip()
 
-            df_inv['NILAI'] = pd.to_numeric(df_inv['HARGA'], errors='coerce')
-            df_tik['NILAI'] = pd.to_numeric(df_tik['TARIF'], errors='coerce') * -1
+            df_inv['INVOICE'] = pd.to_numeric(df_inv['HARGA'], errors='coerce')
+            df_tik['TARIF'] = pd.to_numeric(df_tik['TARIF'], errors='coerce') * -1
 
             tanggal_cols = [col for col in df_inv.columns if 'TANGGAL' in col]
             if tanggal_cols:
@@ -232,10 +232,7 @@ elif menu == "Naik/Turun Golongan":
             tik['pelabuhan'] = None
             
             combined_df = pd.concat([inv, tik], ignore_index=True)
-
             combined_df['pelabuhan'] = combined_df['pelabuhan'].fillna(method='ffill')
-            combined_df['pelabuhan'] = combined_df['pelabuhan'].astype(str).str.upper().str.strip()
-            combined_df['nilai'] = pd.to_numeric(combined_df['nilai'], errors='coerce').fillna(0)
             
             # sumif berdasarkan invoice dan pelabuhan
             sumif = combined_df.groupby(['INVOICE', 'pelabuhan'], as_index=False)['nilai'].sum()
@@ -250,7 +247,7 @@ elif menu == "Naik/Turun Golongan":
             total = rekap['nilai'].sum()
             total_row = pd.DataFrame([{
                 'pelabuhan': 'TOTAL',
-                'nilai': total,
+                'Selisih Naik/Turun Golongan': total,
                 'keterangan': '',
                 'Selisih Naik/Turun Golongan': f"Rp {abs(total):,.0f}".replace(",", ".")
             }])
