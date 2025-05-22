@@ -218,11 +218,7 @@ elif menu == "Naik/Turun Golongan":
             if not tanggal_cols:
                 st.error("Kolom tanggal tidak ditemukan di file Invoice.")
                 st.stop()
-                df_inv['TANGGAL'] = pd.to_datetime(df_inv[tanggal_cols[0]], errors='coerce')
-
-                # Kolom tanggal di tiket summary
-                df_tik['CETAK BOARDING PASS'] = pd.to_datetime(df_tik['CETAK BOARDING PASS'], errors='coerce')
-    
+                   
                 # Filter data berdasarkan tanggal invoice
                 tgl_min = df_inv['TANGGAL'].min().date()
                 tgl_max = df_inv['TANGGAL'].max().date()
