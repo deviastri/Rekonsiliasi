@@ -270,12 +270,10 @@ elif menu == "Naik/Turun Golongan":
                 final_df = final_df[['pelabuhan', 'Selisih Naik/Turun Golongan', 'keterangan']]
                 final_df.columns = ['Pelabuhan Asal', 'Selisih Naik/Turun Golongan', 'Keterangan']
 
-
-
-    except Exception as e:
-        st.error(f"Gagal memproses file: {e}")
-else:
-    st.info("Silakan upload file Invoice dan Ticket Summary.")
+        except Exception as e:
+            st.error(f"Gagal memproses file: {e}")
+    else:
+        st.info("Silakan upload file Invoice dan Ticket Summary.")
 
 
 elif menu == "Rekonsiliasi":
