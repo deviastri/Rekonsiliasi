@@ -195,8 +195,8 @@ elif menu == "Naik/Turun Golongan":
     uploaded_invoice = st.file_uploader("Upload File Invoice", type=["xlsx"])
     uploaded_ticket = st.file_uploader("Upload File Ticket Summary", type=["xlsx"])
     if uploaded_invoice and uploaded_ticket:
-    try:
-        # Baca file
+        try:
+            # Baca file
         df_inv = pd.read_excel(uploaded_invoice, header=1)
         df_tik = pd.read_excel(uploaded_ticket, header=1)
 
