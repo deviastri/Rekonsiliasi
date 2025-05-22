@@ -266,9 +266,9 @@ elif menu == "Naik/Turun Golongan":
                 'Selisih Naik/Turun Golongan': f"Rp {abs(total):,.0f}".replace(",", ".")
         }])
 
-        final_df = pd.concat([rekap, total_row], ignore_index=True)
-        final_df = final_df[['pelabuhan', 'Selisih Naik/Turun Golongan', 'keterangan']]
-        final_df.columns = ['Pelabuhan Asal', 'Selisih Naik/Turun Golongan', 'Keterangan']
+                final_df = pd.concat([rekap, total_row], ignore_index=True)
+                final_df = final_df[['pelabuhan', 'Selisih Naik/Turun Golongan', 'keterangan']]
+                final_df.columns = ['Pelabuhan Asal', 'Selisih Naik/Turun Golongan', 'Keterangan']
 
 
 
