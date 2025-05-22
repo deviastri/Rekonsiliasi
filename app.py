@@ -218,14 +218,14 @@ elif menu == "Naik/Turun Golongan":
                 st.warning("❌ Kolom tanggal tidak ditemukan di file Invoice.")
                 st.stop()
 
-            df_tik['CETAK'] = pd.to_datetime(df_tik['CETAK'], errors='coerce')
+            df_tik['CETAK BOARDING PASS'] = pd.to_datetime(df_tik['CETAK BOARDING PASS'], errors='coerce')
 
             tgl_min = df_inv['TANGGAL'].min().date()
             tgl_max = df_inv['TANGGAL'].max().date()
 
             # Filter sesuai periode tanggal dari data invoice
             df_inv = df_inv[df_inv['TANGGAL'].dt.date.between(tgl_min, tgl_max)]
-            df_tik = df_tik[df_tik['CETAK'].dt.date.between(tgl_min, tgl_max)]
+            df_tik = df_tik[df_tik['CETAK BOARDING PASS'].dt.date.between(tgl_min, tgl_max)]
 
             df1 = df_inv[['INVOICE', 'KEBERANGKATAN', 'NILAI']].rename(columns={'KEBERANGKATAN': 'Pelabuhan'})
             df2 = df_tik[['INVOICE', 'NILAI']]
