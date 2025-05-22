@@ -193,55 +193,77 @@ elif menu == "Penambahan & Pengurangan":
 
 elif menu == "Naik/Turun Golongan":
     st.title("🚐 Naik/Turun Golongan")
-    f_inv = st.file_uploader("Upload File Invoice", type=["xlsx"], key="gol_inv")
-    f_tik = st.file_uploader("Upload File Tiket Summary", type=["xlsx"], key="gol_tik")
-    tgl_gol_start = st.date_input("Tanggal Mulai", key="tgl_g_start")
-    tgl_gol_end = st.date_input("Tanggal Selesai", key="tgl_g_end")
+uploaded_invoice = st.file_uploader("📄 Upload File Invoice", type=["xlsx"])
+uploaded_tiket = st.file_uploader("🚘 Upload File Ticket Summary", type=["xlsx"])
 
-    if f_inv and f_tik:
-        try:
-            df_inv = pd.read_excel(f_inv, header=1)
-            df_tik = pd.read_excel(f_tik, header=1)
-            df_inv.columns = df_inv.columns.str.upper().str.strip()
-            df_tik.columns = df_tik.columns.str.upper().str.strip()
-            invoice_col = 'NOMER INVOICE' if 'NOMER INVOICE' in df_inv.columns else 'NOMOR INVOICE'
-            df_inv['INVOICE'] = df_inv[invoice_col].astype(str).str.strip()
-            df_tik['INVOICE'] = df_tik['NOMOR INVOICE'].astype(str).str.strip()
-            df_inv['NILAI'] = pd.to_numeric(df_inv['HARGA'], errors='coerce')
-            df_tik['NILAI'] = pd.to_numeric(df_tik['TARIF'], errors='coerce') * -1
-            df_inv['TANGGAL'] = pd.to_datetime(df_inv['TANGGAL'], errors='coerce')
-            df_tik['TANGGAL'] = pd.to_datetime(df_tik['CETAK'], errors='coerce')
+def format_rupiah(x):
+    return f"- Rp {abs(x):,.0f}".replace(",", ".") if x < 0 else f"Rp {x:,.0f}".replace(",", ".")
 
-            df_inv = df_inv[(df_inv['TANGGAL'].dt.date >= tgl_gol_start) & (df_inv['TANGGAL'].dt.date <= tgl_gol_end)]
-            df_tik = df_tik[(df_tik['TANGGAL'].dt.date >= tgl_gol_start) & (df_tik['TANGGAL'].dt.date <= tgl_gol_end)]
+def convert_df_to_excel(df):
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Rekap")
+    buffer.seek(0)
+    return buffer
 
-            df1 = df_inv[['INVOICE', 'KEBERANGKATAN', 'NILAI']].rename(columns={'KEBERANGKATAN': 'Pelabuhan'})
-            df2 = df_tik[['INVOICE', 'NILAI']]
-            df2['Pelabuhan'] = None
-            df_all = pd.concat([df1, df2], ignore_index=True)
-            df_all['Pelabuhan'] = df_all['Pelabuhan'].fillna(method='ffill')
-            df_all['Pelabuhan'] = df_all['Pelabuhan'].str.upper().str.strip()
+if uploaded_invoice and uploaded_tiket:
+    invoice_df = pd.read_excel(uploaded_invoice, header=1)
+    ticket_df = pd.read_excel(uploaded_tiket, header=1)
 
-            df_group = df_all.groupby(['INVOICE', 'Pelabuhan'])['NILAI'].sum().reset_index()
-            df_filtered = df_group[df_group['Pelabuhan'].isin(['MERAK', 'BAKAUHENI', 'KETAPANG', 'GILIMANUK'])]
-            df_sum = df_filtered.groupby('Pelabuhan')['NILAI'].sum().reset_index()
-            df_sum = df_sum[df_sum['NILAI'] != 0]
-            df_sum['Keterangan'] = df_sum['NILAI'].apply(lambda x: "Turun Golongan" if x > 0 else "Naik Golongan")
-            df_sum['Selisih Naik/Turun Golongan'] = df_sum['NILAI'].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
-            df_sum = df_sum[['Pelabuhan', 'Selisih Naik/Turun Golongan', 'Keterangan']].rename(columns={'Pelabuhan': 'Pelabuhan Asal'})
-            total = df_filtered['NILAI'].sum()
-            df_total = pd.DataFrame([{
-                'Pelabuhan Asal': 'TOTAL',
-                'Selisih Naik/Turun Golongan': f"Rp {total:,.0f}".replace(",", "."),
-                'Keterangan': ''
-            }])
-            df_final = pd.concat([df_sum, df_total], ignore_index=True)
-            st.session_state['golongan'] = df_final
-            st.dataframe(df_final, use_container_width=True)
-        except Exception as e:
-            st.error(f"Gagal memproses file: {e}")
-    else:
-        st.info("Silakan upload file invoice dan tiket.")
+    invoice_df.columns = invoice_df.columns.str.strip().str.upper()
+    ticket_df.columns = ticket_df.columns.str.strip().str.upper()
+
+    invoice_df['INVOICE'] = invoice_df['NOMER INVOICE'].astype(str).str.strip()
+    invoice_df['HARGA'] = pd.to_numeric(invoice_df['HARGA'], errors='coerce')
+    invoice_df['KEBERANGKATAN'] = invoice_df['KEBERANGKATAN'].astype(str).str.upper().str.strip()
+
+    ticket_df['INVOICE'] = ticket_df['NOMOR INVOICE'].astype(str).str.strip()
+    ticket_df['TARIF'] = pd.to_numeric(ticket_df['TARIF'], errors='coerce') * -1
+
+    inv = invoice_df[['INVOICE', 'KEBERANGKATAN', 'HARGA']].rename(columns={'HARGA': 'nilai', 'KEBERANGKATAN': 'pelabuhan'})
+    tik = ticket_df[['INVOICE', 'TARIF']].rename(columns={'TARIF': 'nilai'})
+    tik['pelabuhan'] = None
+
+    combined_df = pd.concat([inv, tik], ignore_index=True)
+    combined_df['pelabuhan'] = combined_df['pelabuhan'].fillna(method='ffill')
+
+    sumif = combined_df.groupby('INVOICE', as_index=False).agg({
+        'nilai': 'sum',
+        'pelabuhan': 'first'
+    })
+
+    utama = ['MERAK', 'BAKAUHENI', 'KETAPANG', 'GILIMANUK']
+    sumif['pelabuhan'] = sumif['pelabuhan'].str.upper().str.strip()
+    filtered = sumif[sumif['pelabuhan'].isin(utama)]
+
+    rekap = filtered.groupby('pelabuhan')['nilai'].sum().reindex(utama, fill_value=0).reset_index()
+    rekap['keterangan'] = rekap['nilai'].apply(lambda x: 'Naik Golongan' if x < 0 else ('Turun Golongan' if x > 0 else ''))
+    rekap['Selisih Naik/Turun Golongan'] = rekap['nilai'].apply(format_rupiah)
+
+    final_df = rekap[['pelabuhan', 'Selisih Naik/Turun Golongan', 'keterangan']]
+    final_df.columns = ['Pelabuhan Asal', 'Selisih Naik/Turun Golongan', 'Keterangan']
+
+    total = rekap['nilai'].sum()
+    total_row = pd.DataFrame([{
+        'Pelabuhan Asal': 'TOTAL',
+        'Selisih Naik/Turun Golongan': format_rupiah(total),
+        'Keterangan': ''
+    }])
+
+    final_df = pd.concat([final_df, total_row], ignore_index=True)
+
+    st.subheader("📊 Rekap Tabel")
+    st.dataframe(final_df, use_container_width=True)
+
+    st.download_button(
+        "⬇️ Unduh Excel",
+        data=convert_df_to_excel(final_df),
+        file_name="rekap_selisih_golongan.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+else:
+    st.info("Silakan unggah file Invoice dan Ticket Summary untuk mulai.")
 
 elif menu == "Rekonsiliasi":
     st.title("💸 Rekonsiliasi Invoice vs Rekening")
