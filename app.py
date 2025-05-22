@@ -208,8 +208,8 @@ elif menu == "Naik/Turun Golongan":
             df_inv['INVOICE'] = df_inv[invoice_col].astype(str).str.strip()
             df_tik['INVOICE'] = df_tik['NOMOR INVOICE'].astype(str).str.strip()
 
-            df_inv['INVOICE'] = pd.to_numeric(df_inv['HARGA'], errors='coerce')
-            df_tik['TARIF'] = pd.to_numeric(df_tik['TARIF'], errors='coerce') * -1
+            df_inv['NILAI'] = pd.to_numeric(df_inv['HARGA'], errors='coerce')
+            df_tik['NILAI'] = pd.to_numeric(df_tik['TARIF'], errors='coerce') * -1
 
             tanggal_cols = [col for col in df_inv.columns if 'TANGGAL' in col]
             if tanggal_cols:
