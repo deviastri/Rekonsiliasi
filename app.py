@@ -223,43 +223,47 @@ elif menu == "Naik/Turun Golongan":
             tgl_min = df_inv['TANGGAL'].min().date()
             tgl_max = df_inv['TANGGAL'].max().date()
 
-            # Filter sesuai periode tanggal dari data invoice
             df_inv = df_inv[df_inv['TANGGAL'].dt.date.between(tgl_min, tgl_max)]
             df_tik = df_tik[df_tik['CETAK BOARDING PASS'].dt.date.between(tgl_min, tgl_max)]
 
-            df1 = df_inv[['INVOICE', 'KEBERANGKATAN', 'NILAI']].rename(columns={'KEBERANGKATAN': 'Pelabuhan'})
-            df2 = df_tik[['INVOICE', 'NILAI']]
-            df2['Pelabuhan'] = None
+            # Gabungkan data invoice dan tiket summary
+            inv = df_inv[['INVOICE', 'KEBERANGKATAN', 'NILAI']].rename(columns={'KEBERANGKATAN': 'pelabuhan'})
+            tik = df_tik[['INVOICE', 'NILAI']]
+            tik['pelabuhan'] = None
+            combined_df = pd.concat([inv, tik], ignore_index=True)
 
-            df_all = pd.concat([df1, df2], ignore_index=True)
-            df_all['Pelabuhan'] = df_all['Pelabuhan'].fillna(method='ffill')
-            df_all['Pelabuhan'] = df_all['Pelabuhan'].str.upper().str.strip()
+            combined_df['pelabuhan'] = combined_df['pelabuhan'].fillna(method='ffill')
+            combined_df['pelabuhan'] = combined_df['pelabuhan'].str.upper().str.strip()
 
-            df_group = df_all.groupby(['INVOICE', 'Pelabuhan'])['NILAI'].sum().reset_index()
-            df_filtered = df_group[df_group['Pelabuhan'].isin(['MERAK', 'BAKAUHENI', 'KETAPANG', 'GILIMANUK'])]
+            # sumif berdasarkan invoice dan pelabuhan
+            sumif = combined_df.groupby(['INVOICE', 'pelabuhan'], as_index=False)['nilai'].sum()
 
-            df_sum = df_filtered.groupby('Pelabuhan')['NILAI'].sum().reset_index()
-            df_sum = df_sum[df_sum['NILAI'] != 0]
+            utama = ['MERAK', 'BAKAUHENI', 'KETAPANG', 'GILIMANUK']
+            filtered = sumif[sumif['pelabuhan'].isin(utama)]
 
-            df_sum['Keterangan'] = df_sum['NILAI'].apply(lambda x: "Turun Golongan" if x > 0 else "Naik Golongan")
-            df_sum['Selisih Naik/Turun Golongan'] = df_sum['NILAI'].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
+            rekap = filtered.groupby('pelabuhan')['nilai'].sum().reindex(utama, fill_value=0).reset_index()
+            rekap['keterangan'] = rekap['nilai'].apply(lambda x: 'Naik Golongan' if x < 0 else ('Turun Golongan' if x > 0 else ''))
+            rekap['Selisih Naik/Turun Golongan'] = rekap['nilai'].apply(lambda x: f"Rp {abs(x):,.0f}".replace(",", "."))
 
-            df_sum = df_sum[['Pelabuhan', 'Selisih Naik/Turun Golongan', 'Keterangan']].rename(columns={'Pelabuhan': 'Pelabuhan Asal'})
-
-            total = df_filtered['NILAI'].sum()
-            df_total = pd.DataFrame([{
-                'Pelabuhan Asal': 'TOTAL',
-                'Selisih Naik/Turun Golongan': f"Rp {total:,.0f}".replace(",", "."),
-                'Keterangan': ''
+            total = rekap['nilai'].sum()
+            total_row = pd.DataFrame([{
+                'pelabuhan': 'TOTAL',
+                'nilai': total,
+                'keterangan': '',
+                'Selisih Naik/Turun Golongan': f"Rp {abs(total):,.0f}".replace(",", ".")
             }])
 
-            df_final = pd.concat([df_sum, df_total], ignore_index=True)
-            st.dataframe(df_final, use_container_width=True)
+            final_df = pd.concat([rekap, total_row], ignore_index=True)
+            final_df = final_df[['pelabuhan', 'Selisih Naik/Turun Golongan', 'keterangan']]
+            final_df.columns = ['Pelabuhan Asal', 'Selisih Naik/Turun Golongan', 'Keterangan']
+
+            st.dataframe(final_df, use_container_width=True)
 
         except Exception as e:
             st.error(f"Gagal memproses file: {e}")
     else:
         st.info("Silakan upload file invoice dan tiket.")
+
 
 elif menu == "Rekonsiliasi":
     st.title("💸 Rekonsiliasi Invoice vs Rekening")
