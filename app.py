@@ -190,7 +190,7 @@ elif menu == "Penambahan & Pengurangan":
     else:
         st.info("Silakan upload file boarding pass.")
         
-  elif menu == "Naik/Turun Golongan":  
+elif menu == "Naik/Turun Golongan":  
     st.title("🚐 Naik/Turun Golongan")
     f_inv = st.file_uploader("Upload File Invoice", type=["xlsx"], key="gol_inv")
     f_tik = st.file_uploader("Upload File Tiket Summary", type=["xlsx"], key="gol_tik")
