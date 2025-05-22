@@ -192,8 +192,8 @@ elif menu == "Penambahan & Pengurangan":
 
 elif menu == "Naik/Turun Golongan":
     st.title("🚐 Naik/Turun Golongan")
-    f_inv = st.file_uploader("Upload File Invoice", type=["xlsx"], key="gol_inv")
-    f_tik = st.file_uploader("Upload File Tiket Summary", type=["xlsx"], key="gol_tik")
+    f_inv = st.file_uploader("Upload File Invoice", type=["xlsx"])
+    f_tik = st.file_uploader("Upload File Tiket Summary", type=["xlsx"])
 
     if f_inv and f_tik:
         try:
