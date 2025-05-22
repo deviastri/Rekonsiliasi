@@ -194,8 +194,6 @@ elif menu == "Naik/Turun Golongan":
     st.title("🚐 Naik/Turun Golongan")
     f_inv = st.file_uploader("Upload File Invoice", type=["xlsx"], key="gol_inv")
     f_tik = st.file_uploader("Upload File Tiket Summary", type=["xlsx"], key="gol_tik")
-    tgl_gol_start = st.date_input("Tanggal Mulai", key="tgl_g_start")
-    tgl_gol_end = st.date_input("Tanggal Selesai", key="tgl_g_end")
 
     if f_inv and f_tik:
         try:
@@ -208,11 +206,7 @@ elif menu == "Naik/Turun Golongan":
             df_tik['INVOICE'] = df_tik['NOMOR INVOICE'].astype(str).str.strip()
             df_inv['NILAI'] = pd.to_numeric(df_inv['HARGA'], errors='coerce')
             df_tik['NILAI'] = pd.to_numeric(df_tik['TARIF'], errors='coerce') * -1
-            df_inv['TANGGAL'] = pd.to_datetime(df_inv['TANGGAL'], errors='coerce')
-            df_tik['TANGGAL'] = pd.to_datetime(df_tik['CETAK'], errors='coerce')
 
-            df_inv = df_inv[(df_inv['TANGGAL'].dt.date >= tgl_gol_start) & (df_inv['TANGGAL'].dt.date <= tgl_gol_end)]
-            df_tik = df_tik[(df_tik['TANGGAL'].dt.date >= tgl_gol_start) & (df_tik['TANGGAL'].dt.date <= tgl_gol_end)]
 
             df1 = df_inv[['INVOICE', 'KEBERANGKATAN', 'NILAI']].rename(columns={'KEBERANGKATAN': 'Pelabuhan'})
             df2 = df_tik[['INVOICE', 'NILAI']]
