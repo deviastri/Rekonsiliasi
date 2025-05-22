@@ -5,7 +5,7 @@ import re
 st.set_page_config(page_title="ASDP Dashboard", layout="wide")
 
 def format_rupiah(x):
-    return f"Rp {x:,.0f}".replace(",", ".")
+    return f"Rp {x:,.0f}".replace(",", ".") if x >= 0 else f"- Rp {abs(x):,.0f}".replace(",", ".")
 
 MENU_ITEMS = [
     "Dashboard",
@@ -16,6 +16,8 @@ MENU_ITEMS = [
 ]
 
 menu = st.sidebar.radio("Pilih Halaman", MENU_ITEMS)
+
+urutan = ['MERAK', 'BAKAUHENI', 'KETAPANG', 'GILIMANUK']
 
 if menu == "Dashboard":
     st.title("📊 Dashboard Rekonsiliasi Sales Channel - Upload File")
@@ -40,7 +42,7 @@ if menu == "Dashboard":
 
     if files_tiket and file_boarding and file_invoice and file_ticket_summary:
         try:
-            # --- Tiket Terjual ---
+            # Tiket Terjual
             hasil = []
             for f in files_tiket:
                 xl = pd.read_excel(f, header=None)
@@ -62,10 +64,9 @@ if menu == "Dashboard":
                         'Tanggal Selesai': tgl_selesai
                     })
             df_tiket = pd.DataFrame(hasil)
-            urutan = ['MERAK', 'BAKAUHENI', 'KETAPANG', 'GILIMANUK']
             tiket_sum = df_tiket.groupby('Pelabuhan Asal')['Jumlah'].sum().reindex(urutan, fill_value=0)
 
-            # --- Penambahan & Pengurangan ---
+            # Penambahan & Pengurangan
             df_boarding = pd.read_excel(file_boarding)
             df_boarding.columns = df_boarding.columns.str.strip().str.upper()
             df_boarding['JAM'] = pd.to_numeric(df_boarding['JAM'], errors='coerce')
@@ -81,7 +82,7 @@ if menu == "Dashboard":
             p_group = df_p.groupby('ASAL')['TARIF'].sum().reindex(urutan, fill_value=0)
             m_group = df_m.groupby('ASAL')['TARIF'].sum().reindex(urutan, fill_value=0)
 
-            # --- Naik/Turun Golongan ---
+            # Naik/Turun Golongan
             df_inv = pd.read_excel(file_invoice, header=1)
             df_tik = pd.read_excel(file_ticket_summary, header=1)
             df_inv.columns = df_inv.columns.str.upper().str.strip()
@@ -111,7 +112,7 @@ if menu == "Dashboard":
             rekap['Keterangan'] = rekap['SELISIH'].apply(lambda x: 'Naik Golongan' if x < 0 else ('Turun Golongan' if x > 0 else ''))
             rekap['Selisih Naik/Turun Golongan'] = rekap['SELISIH'].apply(format_rp)
 
-            # --- Hitung Nominal Pinbuk ---
+            # Nominal Pinbuk
             nominal_pinbuk = tiket_sum + p_group - m_group + rekap['SELISIH']
 
             df_final = pd.DataFrame({
@@ -124,7 +125,7 @@ if menu == "Dashboard":
             })
 
             for col in ['Tiket Terjual', 'Penambahan', 'Pengurangan', 'Naik/Turun Golongan', 'Nominal Pinbuk']:
-                df_final[col] = df_final[col].apply(lambda x: format_rp(x))
+                df_final[col] = df_final[col].apply(format_rp)
 
             total_row = {
                 'Pelabuhan Asal': 'TOTAL',
@@ -136,29 +137,29 @@ if menu == "Dashboard":
             }
 
             df_final = pd.concat([df_final, pd.DataFrame([total_row])], ignore_index=True)
+
             st.dataframe(df_final, use_container_width=True)
 
-            # Save to session for dashboard persistence
+            # Simpan ke session state agar bisa diakses menu lain
             st.session_state['tiket_terjual'] = df_tiket
             st.session_state['penambahan'] = pd.DataFrame({
                 'Pelabuhan Asal': urutan,
                 'Penambahan': p_group.values,
-                'Tanggal': [tgl_penambahan]*len(urutan)
+                'Tanggal': [tgl_penambahan] * len(urutan)
             })
             st.session_state['pengurangan'] = pd.DataFrame({
                 'Pelabuhan Asal': urutan,
                 'Pengurangan': m_group.values,
-                'Tanggal': [tgl_pengurangan]*len(urutan)
+                'Tanggal': [tgl_pengurangan] * len(urutan)
             })
             st.session_state['golongan'] = pd.DataFrame({
                 'Pelabuhan Asal': rekap['PELABUHAN'],
-                'Selisih Naik/Turun Golongan': rekap['SELISIH'].apply(lambda x: format_rp(x)),
+                'Selisih Naik/Turun Golongan': rekap['Selisih Naik/Turun Golongan'],
                 'Keterangan': rekap['Keterangan']
             })
 
         except Exception as e:
             st.error(f"Gagal memproses data: {e}")
-
     else:
         st.info("Silakan upload semua file yang diperlukan.")
 
