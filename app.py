@@ -243,27 +243,27 @@ if uploaded_invoice and uploaded_ticket:
         combined_df['pelabuhan'] = combined_df['pelabuhan'].fillna(method='ffill')
         combined_df['pelabuhan'] = combined_df['pelabuhan'].astype(str).str.upper().str.strip()
 
-        # Pastikan kolom nilai bertipe numerik dan isi NaN 0
-        combined_df['nilai'] = pd.to_numeric(combined_df['nilai'], errors='coerce').fillna(0)
+        # Pastikan kolom NILAI bertipe numerik dan isi NaN 0
+        combined_df['NILAI'] = pd.to_numeric(combined_df['NILAI'], errors='coerce').fillna(0)
 
         # Group sum by invoice and pelabuhan
-        sumif = combined_df.groupby(['INVOICE', 'pelabuhan'], as_index=False)['nilai'].sum()
+        sumif = combined_df.groupby(['INVOICE', 'pelabuhan'], as_index=False)['NILAI'].sum()
 
         # Filter pelabuhan utama dan rekap
         utama = ['MERAK', 'BAKAUHENI', 'KETAPANG', 'GILIMANUK']
         filtered = sumif[sumif['pelabuhan'].isin(utama)]
 
-        rekap = filtered.groupby('pelabuhan')['nilai'].sum().reindex(utama, fill_value=0).reset_index()
+        rekap = filtered.groupby('pelabuhan')['NILAI'].sum().reindex(utama, fill_value=0).reset_index()
 
         # Keterangan dan format rupiah
-        rekap['keterangan'] = rekap['nilai'].apply(lambda x: 'Naik Golongan' if x < 0 else ('Turun Golongan' if x > 0 else ''))
-        rekap['Selisih Naik/Turun Golongan'] = rekap['nilai'].apply(lambda x: f"Rp {abs(x):,.0f}".replace(",", "."))
+        rekap['keterangan'] = rekap['NILAI'].apply(lambda x: 'Naik Golongan' if x < 0 else ('Turun Golongan' if x > 0 else ''))
+        rekap['Selisih Naik/Turun Golongan'] = rekap['NILAI'].apply(lambda x: f"Rp {abs(x):,.0f}".replace(",", "."))
 
         # Total
-        total = rekap['nilai'].sum()
+        total = rekap['NILAI'].sum()
         total_row = pd.DataFrame([{
             'pelabuhan': 'TOTAL',
-            'nilai': total,
+            'NILAI': total,
             'keterangan': '',
             'Selisih Naik/Turun Golongan': f"Rp {abs(total):,.0f}".replace(",", ".")
         }])
