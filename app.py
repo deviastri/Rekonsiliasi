@@ -211,32 +211,22 @@ elif menu == "Naik/Turun Golongan":
             df_inv['HARGA'] = pd.to_numeric(df_inv['HARGA'], errors='coerce').fillna(0)
             df_tik['TARIF'] = pd.to_numeric(df_tik['TARIF'], errors='coerce').fillna(0) * -1
 
-            # Pelabuhan dari invoice untuk filter
-            df_inv['PELABUHAN_INV'] = df_inv['KEBERANGKATAN'].astype(str).str.upper().str.strip()
+            df_inv['PELABUHAN'] = df_inv['KEBERANGKATAN'].astype(str).str.upper().str.strip()
 
-            # Ambil pelabuhan asal tiket dari kolom ASAL jika ada, else None
-            if 'ASAL' in df_tik.columns:
-                df_tik['PELABUHAN_TIK'] = df_tik['ASAL'].astype(str).str.upper().str.strip()
-            else:
-                df_tik['PELABUHAN_TIK'] = None
-
-            # Gabungkan invoice dan tiket berdasarkan nomor invoice (bukan pelabuhan!)
+            # Gabung invoice dan tiket berdasarkan nomor invoice saja
             merged = pd.merge(
-                df_inv[['INVOICE', 'PELABUHAN_INV', 'HARGA']],
-                df_tik[['INVOICE', 'PELABUHAN_TIK', 'TARIF']],
+                df_inv[['INVOICE', 'PELABUHAN', 'HARGA']],
+                df_tik[['INVOICE', 'TARIF']],
                 on='INVOICE',
                 how='outer'
             ).fillna(0)
 
-            # Pakai pelabuhan dari invoice untuk filter dan grouping
             utama = ['MERAK', 'BAKAUHENI', 'KETAPANG', 'GILIMANUK']
-            merged = merged[merged['PELABUHAN_INV'].isin(utama)]
+            merged = merged[merged['PELABUHAN'].isin(utama)]
 
-            # Hitung selisih per baris
             merged['SELISIH'] = merged['HARGA'] + merged['TARIF']
 
-            # Group berdasarkan pelabuhan invoice (pelabuhan asal)
-            rekap = merged.groupby('PELABUHAN_INV')['SELISIH'].sum().reindex(utama, fill_value=0).reset_index()
+            rekap = merged.groupby('PELABUHAN')['SELISIH'].sum().reindex(utama, fill_value=0).reset_index()
 
             rekap['Keterangan'] = rekap['SELISIH'].apply(
                 lambda x: 'Naik Golongan' if x < 0 else ('Turun Golongan' if x > 0 else '')
@@ -250,25 +240,8 @@ elif menu == "Naik/Turun Golongan":
 
             rekap['Selisih Naik/Turun Golongan'] = rekap['SELISIH'].apply(format_rp)
 
-            total = rekap['SELISIH'].sum()
-            total_row = pd.DataFrame([{
-                'PELABUHAN_INV': 'TOTAL',
-                'SELISIH': total,
-                'Keterangan': '',
-                'Selisih Naik/Turun Golongan': format_rp(total)
-            }])
+            total = rekap['SELISIH'].
 
-            final_df = pd.concat([rekap, total_row], ignore_index=True)
-            final_df = final_df[['PELABUHAN_INV', 'Selisih Naik/Turun Golongan', 'Keterangan']]
-            final_df.columns = ['Pelabuhan Asal', 'Selisih Naik/Turun Golongan', 'Keterangan']
-
-            st.dataframe(final_df, use_container_width=True)
-
-        except Exception as e:
-            st.error(f"Gagal memproses file: {e}")
-
-    else:
-        st.info("Silakan upload file Invoice dan Ticket Summary.")
 
 
 elif menu == "Rekonsiliasi":
