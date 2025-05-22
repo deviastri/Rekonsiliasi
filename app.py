@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import re
+import os
 from datetime import datetime
 
 st.set_page_config(page_title="ASDP Dashboard", layout="wide")
@@ -9,8 +9,7 @@ MENU_ITEMS = [
     "Dashboard",
     "Tiket Terjual",
     "Penambahan & Pengurangan",
-    "Naik/Turun Golongan",
-    "Rekonsiliasi"
+    "Naik/Turun Golongan"
 ]
 menu = st.sidebar.radio("Pilih Halaman", MENU_ITEMS)
 
@@ -31,12 +30,17 @@ if menu == "Dashboard":
     with col4:
         tgl_gol_end = st.date_input("Naik/Turun Golongan - Tanggal Selesai")
 
-    df_tiket = st.session_state.get("tiket_terjual", pd.DataFrame())
-    df_penambahan = st.session_state.get("penambahan", pd.DataFrame())
-    df_pengurangan = st.session_state.get("pengurangan", pd.DataFrame())
-    df_golongan = st.session_state.get("golongan", pd.DataFrame())
-
     pelabuhan = ['MERAK', 'BAKAUHENI', 'KETAPANG', 'GILIMANUK']
+
+    def read_excel(path):
+        if os.path.exists(path):
+            return pd.read_excel(path)
+        return pd.DataFrame()
+
+    df_tiket = read_excel("asdp_dashboard_final/data/tiket_terjual.xlsx")
+    df_penambahan = read_excel("asdp_dashboard_final/data/penambahan.xlsx")
+    df_pengurangan = read_excel("asdp_dashboard_final/data/pengurangan.xlsx")
+    df_golongan = read_excel("asdp_dashboard_final/data/golongan.xlsx")
 
     if not df_tiket.empty:
         df_tiket = df_tiket[(df_tiket['Tanggal Mulai'] >= tgl_tiket_start) & (df_tiket['Tanggal Selesai'] <= tgl_tiket_end)]
@@ -57,9 +61,9 @@ if menu == "Dashboard":
         pengurangan_sum = pd.Series(0, index=pelabuhan)
 
     if not df_golongan.empty:
-        df_golongan_filter = df_golongan[df_golongan['Pelabuhan Asal'] != 'TOTAL']
-        df_golongan_filter = df_golongan_filter.set_index('Pelabuhan Asal').reindex(pelabuhan, fill_value=0)
-        gol_sum = df_golongan_filter['Selisih Naik/Turun Golongan'].str.replace("Rp ", "").str.replace(".", "").astype(int)
+        df_golongan = df_golongan[df_golongan['Pelabuhan Asal'] != 'TOTAL']
+        df_golongan = df_golongan.set_index('Pelabuhan Asal').reindex(pelabuhan, fill_value=0)
+        gol_sum = df_golongan['Selisih Naik/Turun Golongan'].str.replace("Rp ", "").str.replace(".", "").astype(int)
     else:
         gol_sum = pd.Series(0, index=pelabuhan)
 
@@ -75,7 +79,7 @@ if menu == "Dashboard":
     })
 
     for col in df_final.columns[1:]:
-        df_final[col] = df_final[col].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
+        df_final[col] = df_final[col].apply(lambda x: "Rp {:,.0f}".format(x).replace(",", "."))
 
     total_row = {
         'Pelabuhan Asal': 'TOTAL',
@@ -88,11 +92,10 @@ if menu == "Dashboard":
 
     for key in total_row:
         if key != 'Pelabuhan Asal':
-            total_row[key] = f"Rp {total_row[key]:,.0f}".replace(",", ".")
+            total_row[key] = "Rp {:,.0f}".format(total_row[key]).replace(",", ".")
 
     df_final = pd.concat([df_final, pd.DataFrame([total_row])], ignore_index=True)
     st.dataframe(df_final, use_container_width=True)
-
 
 
 elif menu == "Tiket Terjual":
