@@ -10,12 +10,12 @@ MENU_ITEMS = [
     "Tiket Terjual",
     "Penambahan & Pengurangan",
     "Naik/Turun Golongan",
-    "Rekonsiliasi"
+    "Pelimpahan Dana"
 ]
 menu = st.sidebar.radio("Pilih Halaman", MENU_ITEMS)
 
 if menu == "Dashboard":
-    st.title("📊 Dashboard Sales Channel")
+    st.title("📊 Dashboard Rekonsiliasi Sales Channel")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -191,7 +191,7 @@ elif menu == "Penambahan & Pengurangan":
         st.info("Silakan upload file boarding pass.")
         
 elif menu == "Naik/Turun Golongan":
-    st.title("🚐 Naik/Turun Golongan")
+    st.title("🚐 Selisih Naik/Turun Golongan")
 
     uploaded_invoice = st.file_uploader("Upload File Invoice", type=["xlsx"])
     uploaded_ticket = st.file_uploader("Upload File Ticket Summary", type=["xlsx"])
@@ -271,7 +271,7 @@ elif menu == "Naik/Turun Golongan":
         st.info("Silakan upload file Invoice dan Ticket Summary.")
 
 
-elif menu == "Rekonsiliasi":
+elif menu == "Pelimpahan Dana":
     st.title("💸 Rekonsiliasi Invoice vs Rekening")
     f_inv = st.file_uploader("Upload File Invoice", type=["xlsx"], key="rinv")
     f_bank = st.file_uploader("Upload File Rekening Koran", type=["xlsx"], key="rbank")
