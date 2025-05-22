@@ -205,43 +205,69 @@ elif menu == "Naik/Turun Golongan":
 
 elif menu == "Rekonsiliasi":
     st.title("💸 Rekonsiliasi Invoice vs Rekening")
+
     f_inv = st.file_uploader("Upload File Invoice", type=["xlsx"], key="rinv")
     f_bank = st.file_uploader("Upload File Rekening Koran", type=["xlsx"], key="rbank")
+
     if f_inv and f_bank:
         try:
             df_inv = pd.read_excel(f_inv)
             df_bank = pd.read_excel(f_bank, skiprows=11)
+
             df_inv.columns = df_inv.columns.str.lower().str.strip()
             df_bank.columns = df_bank.columns.str.lower().str.strip()
+
             df_inv = df_inv[['tanggal invoice', 'harga']].dropna()
             df_inv['tanggal invoice'] = pd.to_datetime(df_inv['tanggal invoice'], errors='coerce')
             df_inv['harga'] = pd.to_numeric(df_inv['harga'], errors='coerce')
             df_inv['tanggal'] = df_inv['tanggal invoice'].dt.date
+
             df_bank = df_bank[['narasi', 'credit transaction']].dropna()
             df_bank['credit transaction'] = pd.to_numeric(df_bank['credit transaction'], errors='coerce')
+
             records = []
             for _, row in df_bank.iterrows():
                 narasi = str(row['narasi'])
                 kredit = row['credit transaction']
-                match = re.search(r'(20\\d{6})\\s*[-–]?\\s*(20\\d{6})?', narasi)
+                tanggal_r = None
+                invoice_total = 0
+
+                match = re.search(r'(20\d{6})\s*[-–]?\s*(20\d{6})?', narasi)
                 if match:
                     start = pd.to_datetime(match.group(1), format='%Y%m%d', errors='coerce')
                     end = pd.to_datetime(match.group(2), format='%Y%m%d', errors='coerce') if match.group(2) else start
-                    rng = pd.date_range(start, end)
-                    invoice_total = df_inv[df_inv['tanggal'].isin(rng.date)]['harga'].sum()
+                    if pd.notnull(start) and pd.notnull(end):
+                        rng = pd.date_range(start, end)
+                        invoice_total = df_inv[df_inv['tanggal'].isin(rng.date)]['harga'].sum()
+                        tanggal_r = start.date()
+
+                if tanggal_r:
+                    selisih = invoice_total - kredit
                     records.append({
-                        'Tanggal': start.date(),
+                        'Tanggal': tanggal_r,
                         'Narasi': narasi,
                         'Nominal Kredit': kredit,
                         'Nominal Invoice': invoice_total,
-                        'Selisih': invoice_total - kredit
+                        'Selisih': selisih
                     })
+
             df_rekon = pd.DataFrame(records)
+            df_rekon[['Nominal Kredit', 'Nominal Invoice', 'Selisih']] = df_rekon[['Nominal Kredit', 'Nominal Invoice', 'Selisih']].fillna(0)
+
             for col in ['Nominal Kredit', 'Nominal Invoice', 'Selisih']:
                 df_rekon[col] = df_rekon[col].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
-            st.dataframe(df_rekon, use_container_width=True)
+
+            styled = df_rekon.style.set_properties(
+                subset=['Nominal Kredit', 'Nominal Invoice', 'Selisih'],
+                **{'text-align': 'right'}
+            )
+
+            st.dataframe(styled, use_container_width=True)
+
         except Exception as e:
             st.error(f"Gagal memproses file: {e}")
+    else:
+        st.info("Silakan upload file invoice dan rekening.")
 
 elif menu == "Riwayat Upload":
     st.title("📁 Riwayat Data Upload")
