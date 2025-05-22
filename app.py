@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
 from io import BytesIO
+import re
+
+st.set_page_config(page_title="Dashboard ASDP", layout="wide")
 
 def format_rupiah(x):
     if x < 0:
@@ -25,7 +28,7 @@ def style_table(df, right_align_cols=[], center_align_cols=[]):
         styler = styler.set_properties(subset=[col], **{'text-align': 'center'})
     return styler
 
-def menu_dashboard(conn):
+def menu_dashboard():
     st.title("📊 Dashboard Rekapitulasi Sales Channel")
     st.markdown("Pilih periode laporan untuk tiap komponen:")
 
@@ -43,11 +46,7 @@ def menu_dashboard(conn):
     with c4:
         tgl_gol_end = st.date_input("Naik/Turun Golongan - Selesai", key="tgl_gol_end")
 
-    # Ambil data dari database (contoh)
-    # ... kode query dan agregasi ...
-
-    # Buat dataframe hasil rekap
-    # Contoh dummy
+    # Dummy data as placeholder, replace with actual data fetch & calculation
     df_rekap = pd.DataFrame({
         'Pelabuhan Asal': ['MERAK', 'BAKAUHENI', 'KETAPANG', 'GILIMANUK'],
         'Tiket Terjual': [10000000, 12000000, 9000000, 11000000],
@@ -224,7 +223,6 @@ def menu_rekonsiliasi():
             df_bank = df_bank[['narasi', 'credit transaction']].dropna()
             df_bank['credit transaction'] = pd.to_numeric(df_bank['credit transaction'], errors='coerce')
 
-            import re
             records = []
             for _, row in df_bank.iterrows():
                 narasi = str(row['narasi'])
@@ -264,12 +262,10 @@ def menu_rekonsiliasi():
     else:
         st.info("Silakan upload file invoice dan rekening.")
 
-# Main app
 menu = st.sidebar.selectbox("Menu", ["Dashboard", "Tiket Terjual", "Penambahan & Pengurangan", "Naik/Turun Golongan", "Rekonsiliasi"])
 
 if menu == "Dashboard":
-    # Panggil fungsi menu_dashboard, contoh pakai koneksi db jika ada
-    menu_dashboard(None)  # ganti None dengan koneksi db jika tersedia
+    menu_dashboard()
 elif menu == "Tiket Terjual":
     menu_tiket_terjual()
 elif menu == "Penambahan & Pengurangan":
