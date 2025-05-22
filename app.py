@@ -215,7 +215,7 @@ elif menu == "Naik/Turun Golongan":
 
             # Kolom tanggal di invoice untuk filter periode
             tanggal_cols = [col for col in df_inv.columns if 'TANGGAL' in col]
-        if not tanggal_cols:
+            if not tanggal_cols:
             st.error("Kolom tanggal tidak ditemukan di file Invoice.")
             st.stop()
             df_inv['TANGGAL'] = pd.to_datetime(df_inv[tanggal_cols[0]], errors='coerce')
