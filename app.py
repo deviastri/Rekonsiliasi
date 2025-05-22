@@ -233,7 +233,7 @@ elif menu == "Naik/Turun Golongan":
             # Agregasi selisih per pelabuhan
             rekap = merged.groupby('PELABUHAN')['SELISIH'].sum().reindex(utama, fill_value=0).reset_index()
 
-            rekap['Keterangan'] = rekap['SELISIH'].apply(
+                       rekap['Keterangan'] = rekap['SELISIH'].apply(
                 lambda x: 'Naik Golongan' if x < 0 else ('Turun Golongan' if x > 0 else '')
             )
 
@@ -244,6 +244,26 @@ elif menu == "Naik/Turun Golongan":
                     return f"Rp {x:,.0f}".replace(",", ".")
 
             rekap['Selisih Naik/Turun Golongan'] = rekap['SELISIH'].apply(format_rp)
+
+            total = rekap['SELISIH'].sum()
+            total_row = pd.DataFrame([{
+                'PELABUHAN': 'TOTAL',
+                'SELISIH': total,
+                'Keterangan': '',
+                'Selisih Naik/Turun Golongan': format_rp(total)
+            }])
+
+            final_df = pd.concat([rekap, total_row], ignore_index=True)
+            final_df = final_df[['PELABUHAN', 'Selisih Naik/Turun Golongan', 'Keterangan']]
+            final_df.columns = ['Pelabuhan Asal', 'Selisih Naik/Turun Golongan', 'Keterangan']
+
+            st.dataframe(final_df, use_container_width=True)
+
+        except Exception as e:
+            st.error(f"Gagal memproses file: {e}")
+
+    else:
+        st.info("Silakan upload file Invoice dan Ticket Summary.")
 
 
 elif menu == "Rekonsiliasi":
