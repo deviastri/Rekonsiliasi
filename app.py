@@ -228,13 +228,15 @@ elif menu == "Naik/Turun Golongan":
 
             # Gabungkan data invoice dan tiket summary
             inv = df_inv[['INVOICE', 'KEBERANGKATAN', 'NILAI']].rename(columns={'KEBERANGKATAN': 'pelabuhan'})
-            tik = df_tik[['INVOICE', 'NILAI']]
+            tik = df_tik[['INVOICE', 'NILAI']].copy()
             tik['pelabuhan'] = None
+            
             combined_df = pd.concat([inv, tik], ignore_index=True)
 
             combined_df['pelabuhan'] = combined_df['pelabuhan'].fillna(method='ffill')
-            combined_df['pelabuhan'] = combined_df['pelabuhan'].str.upper().str.strip()
-
+            combined_df['pelabuhan'] = combined_df['pelabuhan'].astype(str).str.upper().str.strip()
+            combined_df['nilai'] = pd.to_numeric(combined_df['nilai'], errors='coerce').fillna(0)
+            
             # sumif berdasarkan invoice dan pelabuhan
             sumif = combined_df.groupby(['INVOICE', 'pelabuhan'], as_index=False)['nilai'].sum()
 
