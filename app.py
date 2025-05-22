@@ -190,8 +190,9 @@ elif menu == "Penambahan & Pengurangan":
     else:
         st.info("Silakan upload file boarding pass.")
         
-elif menu == "Naik/Turun Golongan":  
+elif menu == "Naik/Turun Golongan":
     st.title("🚐 Naik/Turun Golongan")
+
     f_inv = st.file_uploader("Upload File Invoice", type=["xlsx"], key="gol_inv")
     f_tik = st.file_uploader("Upload File Tiket Summary", type=["xlsx"], key="gol_tik")
 
@@ -199,39 +200,62 @@ elif menu == "Naik/Turun Golongan":
         try:
             df_inv = pd.read_excel(f_inv, header=1)
             df_tik = pd.read_excel(f_tik, header=1)
+
             df_inv.columns = df_inv.columns.str.upper().str.strip()
             df_tik.columns = df_tik.columns.str.upper().str.strip()
+
             invoice_col = 'NOMER INVOICE' if 'NOMER INVOICE' in df_inv.columns else 'NOMOR INVOICE'
             df_inv['INVOICE'] = df_inv[invoice_col].astype(str).str.strip()
             df_tik['INVOICE'] = df_tik['NOMOR INVOICE'].astype(str).str.strip()
+
             df_inv['NILAI'] = pd.to_numeric(df_inv['HARGA'], errors='coerce')
             df_tik['NILAI'] = pd.to_numeric(df_tik['TARIF'], errors='coerce') * -1
-            df_inv['TANGGAL'] = pd.to_datetime(df_inv['TANGGAL'], errors='coerce')
-            df_tik['TANGGAL'] = pd.to_datetime(df_tik['CETAK'], errors='coerce')
+
+            tanggal_cols = [col for col in df_inv.columns if 'TANGGAL' in col]
+            if tanggal_cols:
+                df_inv['TANGGAL'] = pd.to_datetime(df_inv[tanggal_cols[0]], errors='coerce')
+            else:
+                st.warning("❌ Kolom tanggal tidak ditemukan di file Invoice.")
+                st.stop()
+
+            df_tik['CETAK'] = pd.to_datetime(df_tik['CETAK'], errors='coerce')
+
+            tgl_min = df_inv['TANGGAL'].min().date()
+            tgl_max = df_inv['TANGGAL'].max().date()
+
+            # Filter sesuai periode tanggal dari data invoice
+            df_inv = df_inv[df_inv['TANGGAL'].dt.date.between(tgl_min, tgl_max)]
+            df_tik = df_tik[df_tik['CETAK'].dt.date.between(tgl_min, tgl_max)]
 
             df1 = df_inv[['INVOICE', 'KEBERANGKATAN', 'NILAI']].rename(columns={'KEBERANGKATAN': 'Pelabuhan'})
             df2 = df_tik[['INVOICE', 'NILAI']]
             df2['Pelabuhan'] = None
+
             df_all = pd.concat([df1, df2], ignore_index=True)
             df_all['Pelabuhan'] = df_all['Pelabuhan'].fillna(method='ffill')
             df_all['Pelabuhan'] = df_all['Pelabuhan'].str.upper().str.strip()
 
             df_group = df_all.groupby(['INVOICE', 'Pelabuhan'])['NILAI'].sum().reset_index()
             df_filtered = df_group[df_group['Pelabuhan'].isin(['MERAK', 'BAKAUHENI', 'KETAPANG', 'GILIMANUK'])]
+
             df_sum = df_filtered.groupby('Pelabuhan')['NILAI'].sum().reset_index()
             df_sum = df_sum[df_sum['NILAI'] != 0]
+
             df_sum['Keterangan'] = df_sum['NILAI'].apply(lambda x: "Turun Golongan" if x > 0 else "Naik Golongan")
             df_sum['Selisih Naik/Turun Golongan'] = df_sum['NILAI'].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
+
             df_sum = df_sum[['Pelabuhan', 'Selisih Naik/Turun Golongan', 'Keterangan']].rename(columns={'Pelabuhan': 'Pelabuhan Asal'})
+
             total = df_filtered['NILAI'].sum()
             df_total = pd.DataFrame([{
                 'Pelabuhan Asal': 'TOTAL',
                 'Selisih Naik/Turun Golongan': f"Rp {total:,.0f}".replace(",", "."),
                 'Keterangan': ''
             }])
+
             df_final = pd.concat([df_sum, df_total], ignore_index=True)
-            st.session_state['golongan'] = df_final
             st.dataframe(df_final, use_container_width=True)
+
         except Exception as e:
             st.error(f"Gagal memproses file: {e}")
     else:
