@@ -192,62 +192,69 @@ elif menu == "Penambahan & Pengurangan":
         
 elif menu == "Naik/Turun Golongan":
     st.title("🚐 Naik/Turun Golongan")
+
     uploaded_invoice = st.file_uploader("Upload File Invoice", type=["xlsx"])
     uploaded_ticket = st.file_uploader("Upload File Ticket Summary", type=["xlsx"])
 
     if uploaded_invoice and uploaded_ticket:
         try:
-            # Baca file
+            # Load data
             df_inv = pd.read_excel(uploaded_invoice, header=1)
             df_tik = pd.read_excel(uploaded_ticket, header=1)
 
-            # Standarisasi nama kolom
+            # Normalize columns
             df_inv.columns = df_inv.columns.str.upper().str.strip()
             df_tik.columns = df_tik.columns.str.upper().str.strip()
 
-            # Kolom invoice
+            # Invoice column detection
             invoice_col = 'NOMER INVOICE' if 'NOMER INVOICE' in df_inv.columns else 'NOMOR INVOICE'
             df_inv['INVOICE'] = df_inv[invoice_col].astype(str).str.strip()
             df_tik['INVOICE'] = df_tik['NOMOR INVOICE'].astype(str).str.strip()
 
-            # Buat kolom NILAI dari HARGA dan TARIF (TARIF * -1)
+            # Create NILAI columns: HARGA and TARIF (multiply TARIF by -1)
             df_inv['NILAI'] = pd.to_numeric(df_inv['HARGA'], errors='coerce').fillna(0)
             df_tik['NILAI'] = pd.to_numeric(df_tik['TARIF'], errors='coerce').fillna(0) * -1
 
-            # Prepare data gabungan tanpa filter tanggal
+            # Prepare data for combining
             inv = df_inv[['INVOICE', 'KEBERANGKATAN', 'NILAI']].rename(columns={'KEBERANGKATAN': 'pelabuhan'}).copy()
             tik = df_tik[['INVOICE', 'NILAI']].copy()
             tik['pelabuhan'] = None
 
             combined_df = pd.concat([inv, tik], ignore_index=True)
 
-            # Isi NaN pelabuhan dengan forward fill
+            # Forward fill pelabuhan, clean string
             combined_df['pelabuhan'] = combined_df['pelabuhan'].fillna(method='ffill')
             combined_df['pelabuhan'] = combined_df['pelabuhan'].astype(str).str.upper().str.strip()
 
-            # Pastikan kolom NILAI bertipe numerik dan isi NaN 0
             combined_df['NILAI'] = pd.to_numeric(combined_df['NILAI'], errors='coerce').fillna(0)
 
-            # Group sum by invoice and pelabuhan
+            # SUMIFS (HARGA + TARIF) by INVOICE and pelabuhan
             sumif = combined_df.groupby(['INVOICE', 'pelabuhan'], as_index=False)['NILAI'].sum()
 
-            # Filter pelabuhan utama dan rekap
             utama = ['MERAK', 'BAKAUHENI', 'KETAPANG', 'GILIMANUK']
             filtered = sumif[sumif['pelabuhan'].isin(utama)]
 
+            # Total selisih per pelabuhan
             rekap = filtered.groupby('pelabuhan')['NILAI'].sum().reindex(utama, fill_value=0).reset_index()
 
-            # Keterangan dan format rupiah
+            # Add keterangan naik/turun golongan
             rekap['keterangan'] = rekap['NILAI'].apply(lambda x: 'Naik Golongan' if x < 0 else ('Turun Golongan' if x > 0 else ''))
-            rekap['Selisih Naik/Turun Golongan'] = rekap['NILAI'].apply(lambda x: f"Rp {abs(x):,.0f}".replace(",", "."))
 
-            # Total
+            def format_rp(x):
+                if x < 0:
+                    return f"- Rp {abs(x):,.0f}".replace(",", ".")
+                else:
+                    return f"Rp {x:,.0f}".replace(",", ".")
+
+            rekap['Selisih Naik/Turun Golongan'] = rekap['NILAI'].apply(format_rp)
+
+            # Total row
             total = rekap['NILAI'].sum()
             total_row = pd.DataFrame([{
                 'pelabuhan': 'TOTAL',
                 'NILAI': total,
                 'keterangan': '',
-                'Selisih Naik/Turun Golongan': f"Rp {abs(total):,.0f}".replace(",", ".")
+                'Selisih Naik/Turun Golongan': format_rp(total)
             }])
 
             final_df = pd.concat([rekap, total_row], ignore_index=True)
@@ -258,6 +265,7 @@ elif menu == "Naik/Turun Golongan":
 
         except Exception as e:
             st.error(f"Gagal memproses file: {e}")
+
     else:
         st.info("Silakan upload file Invoice dan Ticket Summary.")
 
