@@ -198,45 +198,50 @@ elif menu == "Naik/Turun Golongan":
 
     if uploaded_invoice and uploaded_ticket:
         try:
+            # Baca data
             df_inv = pd.read_excel(uploaded_invoice, header=1)
             df_tik = pd.read_excel(uploaded_ticket, header=1)
 
+            # Normalisasi nama kolom
             df_inv.columns = df_inv.columns.str.upper().str.strip()
             df_tik.columns = df_tik.columns.str.upper().str.strip()
 
+            # Kolom nomor invoice
             invoice_col = 'NOMER INVOICE' if 'NOMER INVOICE' in df_inv.columns else 'NOMOR INVOICE'
             df_inv['INVOICE'] = df_inv[invoice_col].astype(str).str.strip()
             df_tik['INVOICE'] = df_tik['NOMOR INVOICE'].astype(str).str.strip()
 
+            # Konversi kolom angka dan kali tarif dengan -1
             df_inv['HARGA'] = pd.to_numeric(df_inv['HARGA'], errors='coerce').fillna(0)
             df_tik['TARIF'] = pd.to_numeric(df_tik['TARIF'], errors='coerce').fillna(0) * -1
 
+            # Pelabuhan dari invoice
             df_inv['PELABUHAN'] = df_inv['KEBERANGKATAN'].astype(str).str.upper().str.strip()
 
-            # Hitung total harga per invoice dan pelabuhan dari invoice
-            inv_grouped = df_inv.groupby(['INVOICE', 'KEBERANGKATAN'], as_index=False)['HARGA'].sum()
-            inv_grouped.rename(columns={'KEBERANGKATAN': 'PELABUHAN'}, inplace=True)
-            
-            # Hitung total tarif per invoice dari tiket summary
+            # Hitung total harga per invoice dan pelabuhan
+            inv_grouped = df_inv.groupby(['INVOICE', 'PELABUHAN'], as_index=False)['HARGA'].sum()
+
+            # Hitung total tarif per invoice tiket summary
             tik_grouped = df_tik.groupby('INVOICE', as_index=False)['TARIF'].sum()
-            
-            # Gabungkan berdasarkan invoice dan pelabuhan (pelabuhan dari invoice)
+
+            # Gabungkan berdasarkan invoice dan pelabuhan
             merged = pd.merge(inv_grouped, tik_grouped, on='INVOICE', how='left').fillna(0)
-            
-            # Filter pelabuhan utama berdasarkan pelabuhan dari invoice
+
             utama = ['MERAK', 'BAKAUHENI', 'KETAPANG', 'GILIMANUK']
             merged = merged[merged['PELABUHAN'].isin(utama)]
-            
-            # Hitung selisih per invoice (harga + tarif)
+
+            # Hitung selisih
             merged['SELISIH'] = merged['HARGA'] + merged['TARIF']
-            
+
             # Agregasi selisih per pelabuhan
             rekap = merged.groupby('PELABUHAN')['SELISIH'].sum().reindex(utama, fill_value=0).reset_index()
 
-                       rekap['Keterangan'] = rekap['SELISIH'].apply(
+            # Keterangan naik/turun golongan
+            rekap['Keterangan'] = rekap['SELISIH'].apply(
                 lambda x: 'Naik Golongan' if x < 0 else ('Turun Golongan' if x > 0 else '')
             )
 
+            # Format Rupiah dengan tanda minus di depan jika negatif
             def format_rp(x):
                 if x < 0:
                     return f"- Rp {abs(x):,.0f}".replace(",", ".")
@@ -245,6 +250,7 @@ elif menu == "Naik/Turun Golongan":
 
             rekap['Selisih Naik/Turun Golongan'] = rekap['SELISIH'].apply(format_rp)
 
+            # Total keseluruhan
             total = rekap['SELISIH'].sum()
             total_row = pd.DataFrame([{
                 'PELABUHAN': 'TOTAL',
@@ -261,7 +267,6 @@ elif menu == "Naik/Turun Golongan":
 
         except Exception as e:
             st.error(f"Gagal memproses file: {e}")
-
     else:
         st.info("Silakan upload file Invoice dan Ticket Summary.")
 
