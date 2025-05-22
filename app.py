@@ -194,6 +194,7 @@ elif menu == "Naik/Turun Golongan":
     st.title("🚐 Naik/Turun Golongan")
     uploaded_invoice = st.file_uploader("Upload File Invoice", type=["xlsx"])
     uploaded_ticket = st.file_uploader("Upload File Ticket Summary", type=["xlsx"])
+
     if uploaded_invoice and uploaded_ticket:
         try:
             # Baca file
@@ -208,63 +209,52 @@ elif menu == "Naik/Turun Golongan":
             invoice_col = 'NOMER INVOICE' if 'NOMER INVOICE' in df_inv.columns else 'NOMOR INVOICE'
             df_inv['INVOICE'] = df_inv[invoice_col].astype(str).str.strip()
             df_tik['INVOICE'] = df_tik['NOMOR INVOICE'].astype(str).str.strip()
-    
+
             # Buat kolom NILAI dari HARGA dan TARIF (TARIF * -1)
-            df_inv['NILAI'] = pd.to_numeric(df_inv['HARGA'], errors='coerce')
-            df_tik['NILAI'] = pd.to_numeric(df_tik['TARIF'], errors='coerce') * -1
+            df_inv['NILAI'] = pd.to_numeric(df_inv['HARGA'], errors='coerce').fillna(0)
+            df_tik['NILAI'] = pd.to_numeric(df_tik['TARIF'], errors='coerce').fillna(0) * -1
 
-            # Kolom tanggal di invoice untuk filter periode
-            tanggal_cols = [col for col in df_inv.columns if 'TANGGAL' in col]
-            if not tanggal_cols:
-                st.error("Kolom tanggal tidak ditemukan di file Invoice.")
-                st.stop()
-                   
-                # Filter data berdasarkan tanggal invoice
-                tgl_min = df_inv['TANGGAL'].min().date()
-                tgl_max = df_inv['TANGGAL'].max().date()
-    
-                df_inv = df_inv[df_inv['TANGGAL'].dt.date.between(tgl_min, tgl_max)]
-                df_tik = df_tik[df_tik['CETAK BOARDING PASS'].dt.date.between(tgl_min, tgl_max)]
+            # Prepare data gabungan tanpa filter tanggal
+            inv = df_inv[['INVOICE', 'KEBERANGKATAN', 'NILAI']].rename(columns={'KEBERANGKATAN': 'pelabuhan'}).copy()
+            tik = df_tik[['INVOICE', 'NILAI']].copy()
+            tik['pelabuhan'] = None
 
-                # Prepare data gabungan
-                inv = df_inv[['INVOICE', 'KEBERANGKATAN', 'NILAI']].rename(columns={'KEBERANGKATAN': 'pelabuhan'}).copy()
-                tik = df_tik[['INVOICE', 'NILAI']].copy()
-                tik['pelabuhan'] = None
-    
-                combined_df = pd.concat([inv, tik], ignore_index=True)
-    
-                # Isi NaN pelabuhan dengan forward fill
-                combined_df['pelabuhan'] = combined_df['pelabuhan'].fillna(method='ffill')
-                combined_df['pelabuhan'] = combined_df['pelabuhan'].astype(str).str.upper().str.strip()
-    
-                # Pastikan kolom NILAI bertipe numerik dan isi NaN 0
-                combined_df['NILAI'] = pd.to_numeric(combined_df['NILAI'], errors='coerce').fillna(0)
-    
-                # Group sum by invoice and pelabuhan
-                sumif = combined_df.groupby(['INVOICE', 'pelabuhan'], as_index=False)['NILAI'].sum()
-    
-                # Filter pelabuhan utama dan rekap
-                utama = ['MERAK', 'BAKAUHENI', 'KETAPANG', 'GILIMANUK']
-                filtered = sumif[sumif['pelabuhan'].isin(utama)]
-    
-                rekap = filtered.groupby('pelabuhan')['NILAI'].sum().reindex(utama, fill_value=0).reset_index()
-    
-                # Keterangan dan format rupiah
-                rekap['keterangan'] = rekap['NILAI'].apply(lambda x: 'Naik Golongan' if x < 0 else ('Turun Golongan' if x > 0 else ''))
-                rekap['Selisih Naik/Turun Golongan'] = rekap['NILAI'].apply(lambda x: f"Rp {abs(x):,.0f}".replace(",", "."))
-    
-                # Total
-                total = rekap['NILAI'].sum()
-                total_row = pd.DataFrame([{
+            combined_df = pd.concat([inv, tik], ignore_index=True)
+
+            # Isi NaN pelabuhan dengan forward fill
+            combined_df['pelabuhan'] = combined_df['pelabuhan'].fillna(method='ffill')
+            combined_df['pelabuhan'] = combined_df['pelabuhan'].astype(str).str.upper().str.strip()
+
+            # Pastikan kolom NILAI bertipe numerik dan isi NaN 0
+            combined_df['NILAI'] = pd.to_numeric(combined_df['NILAI'], errors='coerce').fillna(0)
+
+            # Group sum by invoice and pelabuhan
+            sumif = combined_df.groupby(['INVOICE', 'pelabuhan'], as_index=False)['NILAI'].sum()
+
+            # Filter pelabuhan utama dan rekap
+            utama = ['MERAK', 'BAKAUHENI', 'KETAPANG', 'GILIMANUK']
+            filtered = sumif[sumif['pelabuhan'].isin(utama)]
+
+            rekap = filtered.groupby('pelabuhan')['NILAI'].sum().reindex(utama, fill_value=0).reset_index()
+
+            # Keterangan dan format rupiah
+            rekap['keterangan'] = rekap['NILAI'].apply(lambda x: 'Naik Golongan' if x < 0 else ('Turun Golongan' if x > 0 else ''))
+            rekap['Selisih Naik/Turun Golongan'] = rekap['NILAI'].apply(lambda x: f"Rp {abs(x):,.0f}".replace(",", "."))
+
+            # Total
+            total = rekap['NILAI'].sum()
+            total_row = pd.DataFrame([{
                 'pelabuhan': 'TOTAL',
                 'NILAI': total,
                 'keterangan': '',
                 'Selisih Naik/Turun Golongan': f"Rp {abs(total):,.0f}".replace(",", ".")
-        }])
+            }])
 
-                final_df = pd.concat([rekap, total_row], ignore_index=True)
-                final_df = final_df[['pelabuhan', 'Selisih Naik/Turun Golongan', 'keterangan']]
-                final_df.columns = ['Pelabuhan Asal', 'Selisih Naik/Turun Golongan', 'Keterangan']
+            final_df = pd.concat([rekap, total_row], ignore_index=True)
+            final_df = final_df[['pelabuhan', 'Selisih Naik/Turun Golongan', 'keterangan']]
+            final_df.columns = ['Pelabuhan Asal', 'Selisih Naik/Turun Golongan', 'Keterangan']
+
+            st.dataframe(final_df, use_container_width=True)
 
         except Exception as e:
             st.error(f"Gagal memproses file: {e}")
